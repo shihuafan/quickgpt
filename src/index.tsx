@@ -26,7 +26,6 @@ export default function Command() {
   }
   useEffect(loadTemplates, [])
 
-
   cache.clear()
 
   return (
@@ -46,9 +45,13 @@ export default function Command() {
               <ActionPanel>
                 <Action.Push title="Show Details" target={<ChatgptView question={realQuestion} template={template} />} />
                 <ActionPanel.Section>
-                  <AddApiKey />
-                  <CreateOrUpdateTemplate title="Create Template" submitHandle={loadTemplates} />
-                  <CreateOrUpdateTemplate title="Update Template" template={template} submitHandle={loadTemplates} />
+                  <Action.Push icon={Icon.Key} title="Add API Key" target={<ApiKey />} />
+                  <Action.Push icon={Icon.Plus} title="Create Template" target={
+                    <TemplateForm submitHandle={loadTemplates} />
+                  } />
+                  <Action.Push icon={Icon.Document} title="Update Template" target={
+                    <TemplateForm template={template} submitHandle={loadTemplates} />
+                  } />
                   <Action icon={Icon.DeleteDocument} title="Delete Template" onAction={async () => {
                     const data = templates.filter((item: any) => item.id !== template.id)
                     LocalStorage.setItem(templatesKey, JSON.stringify(data))
@@ -65,8 +68,10 @@ export default function Command() {
             actions={
               <ActionPanel>
                 <ActionPanel.Section>
-                  <AddApiKey />
-                  <CreateOrUpdateTemplate title="Create Template" submitHandle={loadTemplates} />
+                  <Action.Push icon={Icon.Key} title="Add API Key" target={<ApiKey />} />
+                  <Action.Push icon={Icon.Plus} title="Create Template" target={
+                    <TemplateForm submitHandle={loadTemplates} />
+                  } />
                 </ActionPanel.Section>
               </ActionPanel>
             }
@@ -76,7 +81,7 @@ export default function Command() {
   );
 }
 
-function CreateOrUpdateTemplate(props: { title: string, template?: Template, submitHandle: () => void }) {
+function TemplateForm(props: { template?: Template, submitHandle: () => void }) {
 
   const createOrUpdate = async (values: any) => {
     try {
@@ -91,50 +96,34 @@ function CreateOrUpdateTemplate(props: { title: string, template?: Template, sub
       await LocalStorage.setItem(templatesKey, JSON.stringify(old))
       props.submitHandle()
       showToast({ style: Toast.Style.Success, title: "保存成功", });
-
     } catch (err) {
       showToast({ style: Toast.Style.Failure, title: "保存失败", });
     }
   }
-  return <Action.Push
-    icon={props.template ? Icon.Document : Icon.Plus}
-    title={props.title}
-    target={
-      <Form actions={
-        <ActionPanel>
-          <Action.SubmitForm title="Submit" onSubmit={createOrUpdate} />
-        </ActionPanel>
-      }>
-        <Form.TextField id='title' title='Title' defaultValue={props.template?.title ?? ''} />
-        <Form.TextArea id='prompt' title='Prompt' defaultValue={props.template?.prompt ?? ''} />
-        <Form.TextField id='max_tokens' title='Max Tokens' defaultValue={props.template?.max_tokens ? `${props.template?.max_tokens}` : ''} />
-      </Form>
-    } />
+  return <Form actions={
+    <ActionPanel>
+      <Action.SubmitForm title="Submit" onSubmit={createOrUpdate} />
+    </ActionPanel>
+  }>
+    <Form.TextField id='title' title='Title' defaultValue={props.template?.title ?? ''} />
+    <Form.TextArea id='prompt' title='Prompt' defaultValue={props.template?.prompt ?? ''} />
+    <Form.TextField id='max_tokens' title='Max Tokens' defaultValue={props.template?.max_tokens ? `${props.template?.max_tokens}` : ''} />
+  </Form>
 }
 
-function AddApiKey() {
+function ApiKey() {
   const [apiKey, setApiKey] = useState('');
   LocalStorage.getItem<string>("api_key").then(key => setApiKey(key ?? ''))
 
-  return <Action.Push
-    icon={Icon.Key}
-    title="Add API Key"
-    target={
-      <Form actions={
-        <ActionPanel>
-          <Action.SubmitForm title="Submit" onSubmit={(values) => {
-            LocalStorage.setItem("api_key", values.api_key).then(() => {
-              showToast({
-                style: Toast.Style.Success,
-                title: "保存成功",
-              });
-            })
-          }} />
-        </ActionPanel>
-      }>
-        <Form.TextField id='api_key' title='API Key' defaultValue={apiKey} />
-      </Form>
-    } />
+  return <Form actions={<ActionPanel>
+    <Action.SubmitForm title="Submit" onSubmit={(values) => {
+      LocalStorage.setItem("api_key", values.api_key).then(() => {
+        showToast({ style: Toast.Style.Success, title: "保存成功", });
+      });
+    }} />
+  </ActionPanel>}>
+    <Form.TextField id='api_key' title='API Key' defaultValue={'apiKey'} />
+  </Form>;
 }
 
 function ChatgptView(props: { question: string, template: Template }) {
@@ -164,7 +153,6 @@ function ChatgptView(props: { question: string, template: Template }) {
       showToast({ ...toasts.fail, message: JSON.stringify(err), })
     })
   }, [])
-
 
   return <Detail markdown={detailContent.markdown} isLoading={detailContent.isLoading} />
 }
