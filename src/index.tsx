@@ -1,4 +1,4 @@
-import { ActionPanel, Cache, Detail, List, LocalStorage, Action, showToast, Toast, Icon, Color, Form } from "@raycast/api";
+import { ActionPanel, Detail, List, LocalStorage, Action, showToast, Toast, Icon, Color, Form } from "@raycast/api";
 import { Configuration, OpenAIApi } from "openai";
 import util from 'util';
 import { useEffect, useState } from "react";
@@ -26,13 +26,9 @@ export default function Command() {
   }
   useEffect(loadTemplates, [])
 
-  cache.clear()
-
   return (
     <List
-      filtering={false}
-      searchText={searchText}
-      onSearchTextChange={setSearchText}>
+      filtering={false} searchText={searchText} onSearchTextChange={setSearchText}>
       {
         templates.length > 0 ? templates.map((template, idx) => {
           const realQuestion = util.format(template.prompt, searchText)
@@ -43,7 +39,7 @@ export default function Command() {
             subtitle={realQuestion}
             actions={
               <ActionPanel>
-                <Action.Push title="Show Details" target={<ChatgptView question={realQuestion} template={template} />} />
+                <Action.Push icon={Icon.ChevronRight} title="Ask Question" target={<ChatgptView question={realQuestion} template={template} />} />
                 <Action.Push icon={Icon.Key} title="Add API Key" target={<ApiKey />} />
                 <Action.Push icon={Icon.Plus} title="Create Template" target={
                   <TemplateForm submitHandle={loadTemplates} />
@@ -51,7 +47,7 @@ export default function Command() {
                 <Action.Push icon={Icon.Document} title="Update Template" target={
                   <TemplateForm template={template} submitHandle={loadTemplates} />
                 } />
-                <Action icon={Icon.DeleteDocument} title="Delete Template" onAction={async () => {
+                <Action icon={Icon.DeleteDocument} title="Delete Template" onAction={() => {
                   const data = templates.filter((item: any) => item.id !== template.id)
                   LocalStorage.setItem(templatesKey, JSON.stringify(data))
                   setTemplates(data)
@@ -109,17 +105,20 @@ function TemplateForm(props: { template?: Template, submitHandle: () => void }) 
 
 function ApiKey() {
   const [apiKey, setApiKey] = useState('');
-  LocalStorage.getItem<string>("api_key").then(key => setApiKey(key ?? ''))
+  useEffect(() => {
+    LocalStorage.getItem<string>("api_key").then(key => { setApiKey(key ?? '') })
+  }, [])
 
   return <Form actions={
     <ActionPanel>
       <Action.SubmitForm title="Submit" onSubmit={(values) => {
         LocalStorage.setItem("api_key", values.api_key).then(() => {
-          showToast({ style: Toast.Style.Success, title: "保存成功", });
-        });
+          showToast({ style: Toast.Style.Success, title: "保存成功" });
+        })
       }} />
-    </ActionPanel>}>
-    <Form.TextField id='api_key' title='API Key' defaultValue={'apiKey'} />
+    </ActionPanel>
+  }>
+    <Form.TextField id='api_key' title='API Key' value={apiKey} />
   </Form>;
 }
 
@@ -128,50 +127,38 @@ function ChatgptView(props: { question: string, template: Template }) {
     return `* **question**:   ${props.question} \n\n * **max tokens**:   ${props.template.max_tokens} \n\n * **answer**: \n\n ${answer}`
   }
 
-  const [detailContent, setDetailContent] = useState({ markdown: buildMarkdown(''), isLoading: true })
+  const [detailContent, setDetailContent] = useState({ answer: '', markdown: buildMarkdown(''), isLoading: true })
 
-  const toasts = {
-    fail: {
-      style: Toast.Style.Failure,
-      title: "查询失败"
-    }, ok: {
-      style: Toast.Style.Success,
-      title: "查询完成"
-    },
-  }
-
-  useEffect(() => {
-    const start = Date.now()
-    queryQuestion(props.question, props.template.max_tokens).then(answer => {
-      setDetailContent({ markdown: buildMarkdown(answer), isLoading: false })
-      showToast({ ...toasts.ok, message: `耗时 ${(Date.now() - start) / 1000}s` })
-    }).catch(err => {
+  const queryAndUpdate = async () => {
+    try {
+      const start = Date.now()
+      const apiKey = await LocalStorage.getItem<string>("api_key")
+      const configuration = new Configuration({
+        apiKey: apiKey,
+      });
+      const response = await (new OpenAIApi(configuration)).createCompletion({
+        model: "text-davinci-003",
+        prompt: props.question,
+        max_tokens: props.template.max_tokens,
+      })
+      const answer = response.data.choices[0].text ?? ''
+      setDetailContent({ answer: answer ?? '', markdown: buildMarkdown(answer), isLoading: false })
+      showToast({ style: Toast.Style.Success, title: "查询完成", message: `耗时 ${(Date.now() - start) / 1000}s` })
+    } catch (err) {
       console.log(err)
-      showToast({ ...toasts.fail, message: JSON.stringify(err), })
-    })
-  }, [])
-
-  return <Detail markdown={detailContent.markdown} isLoading={detailContent.isLoading} />
-}
-
-const cache = new Cache();
-async function queryQuestion(question: string, max_tokens: number) {
-  cache.set(question, cache.get(question) ?? '')
-
-  let answer = cache.get(question)
-  if (answer !== '') {
-    return answer
+      showToast({ style: Toast.Style.Failure, title: "查询失败", message: JSON.stringify(err), })
+    }
   }
-  const apiKey = await LocalStorage.getItem<string>("api_key")
-  const configuration = new Configuration({
-    apiKey: apiKey,
-  });
-  const response = await (new OpenAIApi(configuration)).createCompletion({
-    model: "text-davinci-003",
-    prompt: question,
-    max_tokens: max_tokens,
-  })
-  answer = response.data.choices[0].text ?? ''
-  cache.set(question, answer)
-  return answer
+
+  useEffect(() => { queryAndUpdate() }, [])
+
+  return <Detail markdown={detailContent.markdown} isLoading={detailContent.isLoading} actions={
+    <ActionPanel>
+      <Action icon={Icon.RotateClockwise} title="Refresh" onAction={() => {
+        setDetailContent({ answer: '', markdown: buildMarkdown(''), isLoading: true })
+        queryAndUpdate()
+      }} />
+    </ActionPanel>
+  }
+  />
 }
