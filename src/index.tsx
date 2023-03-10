@@ -142,26 +142,22 @@ function ChatgptView(props: { question: string, template: Template }) {
     return `* **question**:   ${props.question} \n\n * **max tokens**:   ${props.template.max_tokens} \n\n * **answer**: \n\n ${answer}`
   }
 
-  const [markdown, setMarkdown] = useState<string>(buildMarkdown(''))
+  const [detailContent, setDetailContent] = useState({ markdown: buildMarkdown(''), isLoading: true })
 
   const toasts = {
-    running: {
-      style: Toast.Style.Animated,
-      title: "查询中"
-    }, fail: {
+    fail: {
       style: Toast.Style.Failure,
       title: "查询失败"
     }, ok: {
       style: Toast.Style.Success,
-      title: "查询成功"
+      title: "查询完成"
     },
   }
 
   useEffect(() => {
-    showToast(toasts.running)
     const start = Date.now()
     queryQuestion(props.question, props.template.max_tokens).then(answer => {
-      setMarkdown(buildMarkdown(answer))
+      setDetailContent({ markdown: buildMarkdown(answer), isLoading: false })
       showToast({ ...toasts.ok, message: `耗时 ${(Date.now() - start) / 1000}s` })
     }).catch(err => {
       console.log(err)
@@ -170,7 +166,7 @@ function ChatgptView(props: { question: string, template: Template }) {
   }, [])
 
 
-  return <Detail markdown={markdown} />
+  return <Detail markdown={detailContent.markdown} isLoading={detailContent.isLoading} />
 }
 
 const cache = new Cache();
