@@ -44,20 +44,18 @@ export default function Command() {
             actions={
               <ActionPanel>
                 <Action.Push title="Show Details" target={<ChatgptView question={realQuestion} template={template} />} />
-                <ActionPanel.Section>
-                  <Action.Push icon={Icon.Key} title="Add API Key" target={<ApiKey />} />
-                  <Action.Push icon={Icon.Plus} title="Create Template" target={
-                    <TemplateForm submitHandle={loadTemplates} />
-                  } />
-                  <Action.Push icon={Icon.Document} title="Update Template" target={
-                    <TemplateForm template={template} submitHandle={loadTemplates} />
-                  } />
-                  <Action icon={Icon.DeleteDocument} title="Delete Template" onAction={async () => {
-                    const data = templates.filter((item: any) => item.id !== template.id)
-                    LocalStorage.setItem(templatesKey, JSON.stringify(data))
-                    setTemplates(data)
-                  }} />
-                </ActionPanel.Section>
+                <Action.Push icon={Icon.Key} title="Add API Key" target={<ApiKey />} />
+                <Action.Push icon={Icon.Plus} title="Create Template" target={
+                  <TemplateForm submitHandle={loadTemplates} />
+                } />
+                <Action.Push icon={Icon.Document} title="Update Template" target={
+                  <TemplateForm template={template} submitHandle={loadTemplates} />
+                } />
+                <Action icon={Icon.DeleteDocument} title="Delete Template" onAction={async () => {
+                  const data = templates.filter((item: any) => item.id !== template.id)
+                  LocalStorage.setItem(templatesKey, JSON.stringify(data))
+                  setTemplates(data)
+                }} />
               </ActionPanel>
             }
           />
@@ -67,12 +65,10 @@ export default function Command() {
             icon={Icon.SpeechBubbleActive}
             actions={
               <ActionPanel>
-                <ActionPanel.Section>
-                  <Action.Push icon={Icon.Key} title="Add API Key" target={<ApiKey />} />
-                  <Action.Push icon={Icon.Plus} title="Create Template" target={
-                    <TemplateForm submitHandle={loadTemplates} />
-                  } />
-                </ActionPanel.Section>
+                <Action.Push icon={Icon.Key} title="Add API Key" target={<ApiKey />} />
+                <Action.Push icon={Icon.Plus} title="Create Template" target={
+                  <TemplateForm submitHandle={loadTemplates} />
+                } />
               </ActionPanel>
             }
           />
@@ -115,13 +111,14 @@ function ApiKey() {
   const [apiKey, setApiKey] = useState('');
   LocalStorage.getItem<string>("api_key").then(key => setApiKey(key ?? ''))
 
-  return <Form actions={<ActionPanel>
-    <Action.SubmitForm title="Submit" onSubmit={(values) => {
-      LocalStorage.setItem("api_key", values.api_key).then(() => {
-        showToast({ style: Toast.Style.Success, title: "保存成功", });
-      });
-    }} />
-  </ActionPanel>}>
+  return <Form actions={
+    <ActionPanel>
+      <Action.SubmitForm title="Submit" onSubmit={(values) => {
+        LocalStorage.setItem("api_key", values.api_key).then(() => {
+          showToast({ style: Toast.Style.Success, title: "保存成功", });
+        });
+      }} />
+    </ActionPanel>}>
     <Form.TextField id='api_key' title='API Key' defaultValue={'apiKey'} />
   </Form>;
 }
